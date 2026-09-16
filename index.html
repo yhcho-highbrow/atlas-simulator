@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
     <div class="field"><label for="oPad">파츠 간 여백(px)</label><input id="oPad" type="number" min="0" max="16" value="2"></div>
     <div class="field"><label for="oRot">90° 회전 허용</label>
       <select id="oRot"><option value="0" selected>끔</option><option value="1">켬</option></select>
-      <span class="hint">Spine 설정 미확인 · 끔이 보수적</span></div>
+      <span class="hint">마누스 사례에서 끔일 때 실제와 일치</span></div>
     <div class="field"><label for="oCell">계산 정밀도</label>
       <select id="oCell"><option value="4" selected>4px (정밀)</option><option value="8">8px (빠름)</option></select></div>
     <div class="field"><label for="oC">주의 기준(면적비 %)</label><input id="oC" type="number" min="10" max="100" value="50"></div>
@@ -167,7 +167,7 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
     <ul class="note" style="padding-left:18px;margin-top:2px">
       <li>파츠 투명 영역 제외, 외곽을 감싸는 볼록 도형 기준 배치 (Spine Polygons 패킹 근사)</li>
       <li>실제 Spine 배치와 좌표는 다름 · 페이지 수와 여유 판단 용도</li>
-      <li>기준값은 1장 성공 사례 3건으로 설정 · 2장 초과 사례 확보 시 재보정 필요</li>
+      <li>기준값은 1장 성공 3건, 2장 초과 1건으로 설정 · 사례 추가 시 재보정</li>
     </ul>
     <table class="ref">
       <thead><tr><th>검증 샘플</th><th>면적비</th><th>시뮬</th><th>Spine</th></tr></thead>
@@ -175,9 +175,10 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
         <tr><td>말덱</td><td>62.3%</td><td>2048×1792</td><td>2033×1966</td></tr>
         <tr><td>일루이드</td><td>40.6%</td><td>1384×1756</td><td>1860×1673</td></tr>
         <tr><td>데바</td><td>26.6%</td><td>1604×956</td><td>1937×911</td></tr>
+        <tr><td>마누스</td><td>78.4%</td><td>2장</td><td>2장 (2037×1422, 2039×1219)</td></tr>
       </tbody>
     </table>
-    <p class="note">세 건 모두 Spine 결과 1장 · Spine 면적이 시뮬보다 9~34% 큼</p>
+    <p class="note">1장 성공 3건 · Spine 면적이 시뮬보다 9~34% 큼<br>마누스 · 시뮬·Spine 모두 2장, 대형 배경 2개가 2장째로 분리</p>
   </details>
 
   <section class="parts" id="partsBox" hidden>
@@ -407,7 +408,7 @@ const AtlasCore = (() => {
         const data = cx.getImageData(0, 0, cv.width, cv.height).data;
         const a = AtlasCore.analyze(f.name.replace(/\.png$/i, ''), bmp.width, bmp.height, data);
         a.bmp = bmp;
-        a.noAlpha = !a.empty && a.opaque >= bmp.width * bmp.height * 0.95; // 대부분 불투명 = 캡쳐·배경 이미지
+        a.noAlpha = !a.empty && (a.opaque >= bmp.width * bmp.height * 0.95 || /(^|[_\-\s])(spine|atlas)\d*$/i.test(a.name)); // 캡쳐·아틀라스 이미지 추정
         a.on = !a.empty && !a.noAlpha;
         state.parts.push(a);
       } catch (err) { busy(`${f.name} 읽기 실패 · 손상되었거나 PNG가 아닌 파일`); }
@@ -449,7 +450,7 @@ const AtlasCore = (() => {
     if (!on.length) { level = 'none'; reasons.push('포함된 파츠 없음 · 목록에서 파츠 체크 필요'); }
     if (r.tooBig.length) { up('danger'); reasons.push(`단일 파츠가 ${S} 초과: ${r.tooBig.join(', ')}`); }
     if (pg.length > 1) { up('danger'); reasons.push(`빈틈 없이 채워도 ${pg.length}장 필요 · Spine에서도 분할 확실`); }
-    if (dens > o.danger) { up('danger'); reasons.push(`면적비 ${dens.toFixed(1)}% · 위험 기준 ${o.danger}% 초과 (검증된 1장 최대치 62.3%)`); }
+    if (dens > o.danger) { up('danger'); reasons.push(`면적비 ${dens.toFixed(1)}% · 위험 기준 ${o.danger}% 초과 (검증: 1장 최대 62.3% · 2장 사례 78.4%)`); }
     else if (dens > o.caution) { up('caution'); reasons.push(`면적비 ${dens.toFixed(1)}% · 주의 기준 ${o.caution}% 초과`); }
     let est = null;
     if (pg.length) {
@@ -460,7 +461,11 @@ const AtlasCore = (() => {
     }
     if (state.subdirs) { up('caution'); reasons.push(`하위 폴더 ${state.subdirs}개 감지 · Spine 설정에 따라 폴더별 별도 아틀라스 가능`); }
     const skipped = state.parts.filter(p => p.noAlpha).length;
-    if (skipped) reasons.push(`투명 영역이 거의 없는 이미지 ${skipped}개 자동 제외 (캡쳐 이미지 추정)`);
+    if (skipped) reasons.push(`캡쳐·아틀라스로 보이는 이미지 ${skipped}개 자동 제외`);
+    if (level !== 'safe' && on.length) {
+      const top = on.filter(p => p.hullArea / hull >= 0.1).sort((a, b) => b.hullArea - a.hullArea);
+      if (top.length) reasons.push(`비중 큰 파츠: ${top.slice(0, 3).map(p => `${p.name} ${(p.hullArea / hull * 100).toFixed(0)}%`).join(', ')} · 축소 후 Spine에서 확대하거나 별도 아틀라스 분리 검토`);
+    }
     if (level === 'safe' && on.length) reasons.unshift(`면적비 ${dens.toFixed(1)}% · 1장 수용 예상`);
 
     const label = { safe: '안전', caution: '주의', danger: '위험', none: '대기 중' }[level];
@@ -498,7 +503,7 @@ const AtlasCore = (() => {
         <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
         <span class="pc">${p.on ? share.toFixed(1) + '%' : '제외'}</span>
         <span class="sub"><span>${p.trim.w}×${p.trim.h}</span><span class="share"><i style="width:${Math.min(100, share * 4)}%"></i></span><span title="외곽선 안에서 실제 그림이 차지하는 비율">채움 ${fill}%</span></span>
-        ${p.noAlpha ? '<span class="warn">투명 영역 거의 없음 · 캡쳐·배경 이미지로 보여 제외 (필요 시 체크)</span>' : ''}
+        ${p.noAlpha ? '<span class="warn">캡쳐·아틀라스 이미지로 보여 자동 제외 (실제 파츠면 체크)</span>' : ''}
         ${big ? `<span class="warn">${o.maxSize} 초과 파츠</span>` : ''}
       </li>`;
     }).join('');
