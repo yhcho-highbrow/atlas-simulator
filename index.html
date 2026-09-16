@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분절 아틀라스 미리보기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F5F2; --panel:#FFFFFF; --ink:#1B2421; --ink-soft:#56635E; --line:#D5DCD7;
+  --mat:#1F4D43; --mat-grid:#2E6356; --mat-grid-strong:#4A8374; --ruler:#E8C547;
+  --safe:#2F8F62; --caution:#C98A0B; --danger:#C83F30;
+  --safe-bg:#E3F2EA; --caution-bg:#FBF0D6; --danger-bg:#F9E1DD;
+  --focus:#2B6CB0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141A18; --panel:#1C2421; --ink:#E6ECE8; --ink-soft:#9AA8A2; --line:#2F3A36;
+    --safe-bg:#173327; --caution-bg:#3A2E10; --danger-bg:#3D1D19;
+    --safe:#5CC08E; --caution:#E8B544; --danger:#EE7465; --focus:#7FB3F0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141A18; --panel:#1C2421; --ink:#E6ECE8; --ink-soft:#9AA8A2; --line:#2F3A36;
+  --safe-bg:#173327; --caution-bg:#3A2E10; --danger-bg:#3D1D19;
+  --safe:#5CC08E; --caution:#E8B544; --danger:#EE7465; --focus:#7FB3F0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.55;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:20px 28px 14px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+header p{margin:0;color:var(--ink-soft);font-size:14px}
+.app{display:grid;grid-template-columns:360px minmax(0,1fr);gap:0;min-height:calc(100vh - 64px)}
+aside{border-right:1px solid var(--line);padding:20px 22px 40px;display:flex;flex-direction:column;gap:18px;background:var(--panel)}
+main{padding:20px 28px 40px;min-width:0}
+@media (max-width:900px){.app{grid-template-columns:1fr} aside{border-right:0;border-bottom:1px solid var(--line)}}
+
+.drop{border:2px dashed var(--line);border-radius:10px;padding:20px 16px;text-align:center;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--mat-grid-strong);background:color-mix(in srgb,var(--mat) 8%,transparent)}
+.drop strong{display:block;font-size:16px;margin-bottom:4px}
+.drop small{color:var(--ink-soft);display:block;margin-bottom:12px}
+.btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--ink-soft)}
+.btn.primary{background:var(--mat);border-color:var(--mat);color:#fff}
+.btn.primary:hover{background:var(--mat-grid)}
+
+.verdict{border-radius:10px;padding:16px 18px;border-left:6px solid var(--line);background:var(--paper)}
+.verdict[data-level="safe"]{border-color:var(--safe);background:var(--safe-bg)}
+.verdict[data-level="caution"]{border-color:var(--caution);background:var(--caution-bg)}
+.verdict[data-level="danger"]{border-color:var(--danger);background:var(--danger-bg)}
+.verdict .lvl{font-size:26px;font-weight:700;line-height:1.2}
+.verdict[data-level="safe"] .lvl{color:var(--safe)}
+.verdict[data-level="caution"] .lvl{color:var(--caution)}
+.verdict[data-level="danger"] .lvl{color:var(--danger)}
+.verdict ul{margin:8px 0 0;padding-left:18px;font-size:14px}
+.verdict li{margin:2px 0}
+
+.meter{margin-top:12px}
+.meter .bar{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--safe) 0 var(--c),var(--caution) var(--c) var(--d),var(--danger) var(--d) 100%);opacity:.35}
+.meter .wrap{position:relative}
+.meter .pin{position:absolute;top:-4px;width:3px;height:18px;background:var(--ink);border-radius:2px;transform:translateX(-1px)}
+.meter .scale{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-top:4px}
+
+.stats{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:14px;margin:0}
+.stats dt{color:var(--ink-soft)}
+.stats dd{margin:0;text-align:right;font-weight:500}
+
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:500}
+.field{display:grid;grid-template-columns:1fr 110px;align-items:center;gap:8px;margin:10px 0;font-size:14px}
+.field input[type=number],.field select{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.field .hint{grid-column:1/-1;color:var(--ink-soft);font-size:12px;margin-top:-6px}
+.note{font-size:12.5px;color:var(--ink-soft);margin:6px 0 0}
+table.ref{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+table.ref th,table.ref td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}
+table.ref th:first-child,table.ref td:first-child{text-align:left}
+
+.parts h2,.view h2{font-size:15px;margin:0 0 8px;font-weight:700}
+.parts .tools{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-soft);margin-bottom:6px}
+.plist{list-style:none;margin:0;padding:0;max-height:440px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.plist li{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);font-size:13px}
+.plist li:last-child{border-bottom:0}
+.plist li.off{opacity:.45}
+.plist li.hot{background:color-mix(in srgb,var(--ruler) 22%,transparent)}
+.plist .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.plist .pc{text-align:right}
+.plist .sub{grid-column:2/-1;display:flex;align-items:center;gap:8px;color:var(--ink-soft);font-size:12px}
+.plist .share{flex:1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.plist .share i{display:block;height:100%;background:var(--mat-grid-strong)}
+.plist .warn{color:var(--danger);grid-column:2/-1;font-size:12px}
+
+.view .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.tabs{display:flex;gap:6px}
+.tab{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:14px}
+.tab[aria-selected="true"]{background:var(--mat);color:#fff;border-color:var(--mat)}
+.toggles{display:flex;gap:14px;align-items:center;font-size:14px;flex-wrap:wrap}
+.stage{background:var(--mat);border-radius:12px;padding:14px;overflow:auto}
+canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);margin-top:10px}
+.legend span::before{content:"";display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.legend .l1::before{border-color:var(--ruler);border-top-style:dashed}
+.legend .l2::before{border-color:#9FD4C3}
+.legend .l3::before{border-color:#F29E8E;border-top-style:dotted}
+.empty{color:#CFE3DC;text-align:center;padding:80px 20px;font-size:15px}
+.busy{font-size:13px;color:var(--ink-soft)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>분절 아틀라스 미리보기</h1>
+  <p>분절 PNG가 Spine 아틀라스 2048 한 장에 들어갈지 미리 확인</p>
+</header>
+<div class="app">
+<aside>
+  <div class="drop" id="drop">
+    <strong>분절 PNG 폴더를 여기에 끌어다 놓기</strong>
+    <small>PSD에서 내보낸 파츠 PNG 전체 · 파일은 서버로 전송되지 않음</small>
+    <div class="btns">
+      <button class="btn primary" id="pickDir" type="button">폴더 선택</button>
+      <button class="btn" id="pickFiles" type="button">파일 선택</button>
+    </div>
+    <input type="file" id="dirInput" webkitdirectory multiple hidden>
+    <input type="file" id="fileInput" accept="image/png" multiple hidden>
+    <p class="busy" id="busy" aria-live="polite"></p>
+  </div>
+
+  <section class="verdict" id="verdict" data-level="none" aria-live="polite">
+    <div class="lvl" id="vLevel">대기 중</div>
+    <ul id="vReasons"><li>폴더를 넣으면 판정 결과 표시</li></ul>
+    <div class="meter" id="meter" hidden>
+      <div class="wrap"><div class="bar" id="mBar"></div><div class="pin" id="mPin"></div></div>
+      <div class="scale"><span>0%</span><span id="mC">50%</span><span id="mD">65%</span><span>100%</span></div>
+    </div>
+  </section>
+
+  <dl class="stats" id="stats" hidden>
+    <dt>포함 파츠</dt><dd id="sCount">-</dd>
+    <dt>외곽선 면적 합 ÷ 2048²</dt><dd id="sDensity">-</dd>
+    <dt>시뮬레이션 페이지</dt><dd id="sSim">-</dd>
+    <dt>Spine 예상 페이지</dt><dd id="sEst">-</dd>
+    <dt>위험 기준까지 여유</dt><dd id="sRoom">-</dd>
+  </dl>
+
+  <details>
+    <summary>판정 설정</summary>
+    <div class="field"><label for="oMax">페이지 최대 크기</label>
+      <select id="oMax"><option>1024</option><option selected>2048</option><option>4096</option></select></div>
+    <div class="field"><label for="oPad">파츠 간 여백(px)</label><input id="oPad" type="number" min="0" max="16" value="2"></div>
+    <div class="field"><label for="oRot">90° 회전 허용</label>
+      <select id="oRot"><option value="0" selected>끔</option><option value="1">켬</option></select>
+      <span class="hint">Spine 설정 미확인 · 끔이 보수적</span></div>
+    <div class="field"><label for="oCell">계산 정밀도</label>
+      <select id="oCell"><option value="4" selected>4px (정밀)</option><option value="8">8px (빠름)</option></select></div>
+    <div class="field"><label for="oC">주의 기준(면적비 %)</label><input id="oC" type="number" min="10" max="100" value="50"></div>
+    <div class="field"><label for="oD">위험 기준(면적비 %)</label><input id="oD" type="number" min="10" max="100" value="65"></div>
+    <div class="field"><label for="oK">Spine 크기 보정 배율</label><input id="oK" type="number" min="1" max="2" step="0.01" value="1.16">
+      <span class="hint">시뮬 결과 가로·세로에 곱하는 값</span></div>
+    <p class="note">판정 방식</p>
+    <ul class="note" style="padding-left:18px;margin-top:2px">
+      <li>파츠 투명 영역 제외, 외곽을 감싸는 볼록 도형 기준 배치 (Spine Polygons 패킹 근사)</li>
+      <li>실제 Spine 배치와 좌표는 다름 · 페이지 수와 여유 판단 용도</li>
+      <li>기준값은 1장 성공 사례 3건으로 설정 · 2장 초과 사례 확보 시 재보정 필요</li>
+    </ul>
+    <table class="ref">
+      <thead><tr><th>검증 샘플</th><th>면적비</th><th>시뮬</th><th>Spine</th></tr></thead>
+      <tbody>
+        <tr><td>말덱</td><td>62.3%</td><td>2048×1792</td><td>2033×1966</td></tr>
+        <tr><td>일루이드</td><td>40.6%</td><td>1384×1756</td><td>1860×1673</td></tr>
+        <tr><td>데바</td><td>26.6%</td><td>1604×956</td><td>1937×911</td></tr>
+      </tbody>
+    </table>
+    <p class="note">세 건 모두 Spine 결과 1장 · Spine 면적이 시뮬보다 9~34% 큼</p>
+  </details>
+
+  <section class="parts" id="partsBox" hidden>
+    <h2>파츠 목록</h2>
+    <div class="tools"><span>면적 큰 순 · 체크 해제 시 제외</span><button class="btn" id="allOn" type="button">전체 포함</button></div>
+    <ul class="plist" id="plist"></ul>
+  </section>
+</aside>
+
+<main class="view">
+  <div class="top">
+    <h2 id="viewTitle">배치 미리보기</h2>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="toggles">
+      <label><input type="checkbox" id="tHull" checked> 외곽선</label>
+      <label><input type="checkbox" id="tImg" checked> 이미지</label>
+      <button class="btn" id="savePng" type="button" disabled>미리보기 PNG 저장</button>
+    </div>
+  </div>
+  <div class="stage"><canvas id="cv" width="900" height="900" aria-label="아틀라스 배치 미리보기"></canvas></div>
+  <div class="legend"><span class="l1">페이지 최대 크기</span><span class="l2">시뮬레이션 사용 영역</span><span class="l3">Spine 예상 크기</span></div>
+</main>
+</div>
+<script>
+/* ===== ATLAS CORE (브라우저·노드 공용) ===== */
+const AtlasCore = (() => {
+  // 알파 데이터 → 파츠 분석 (trim bbox, 볼록껍질, 면적)
+  function analyze(name, w, h, rgba) {
+    const pts = [];
+    let minX = w, minY = h, maxX = -1, maxY = -1, opaque = 0;
+    for (let y = 0; y < h; y++) {
+      let l = -1, r = -1;
+      for (let x = 0; x < w; x++) {
+        if (rgba[(y * w + x) * 4 + 3] > 0) { if (l < 0) l = x; r = x; opaque++; }
+      }
+      if (l >= 0) {
+        pts.push([l, y], [r + 1, y], [l, y + 1], [r + 1, y + 1]);
+        if (l < minX) minX = l; if (r > maxX) maxX = r;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+    if (maxX < 0) return { name, w, h, empty: true };
+    const hull = convexHull(pts);
+    return {
+      name, w, h, empty: false, opaque,
+      trim: { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 },
+      hull, hullArea: Math.abs(polyArea(hull)),
+    };
+  }
+  function convexHull(p) {
+    p.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    up.pop(); lo.pop(); return lo.concat(up);
+  }
+  function polyArea(P) { let s = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; }
+
+  // 볼록껍질 → 셀 단위 행별 구간(span) 마스크 (원점 = trim 좌상단 - 패딩)
+  function buildShape(part, F, padPx, rotate) {
+    let poly = part.hull.map(([x, y]) => [x - part.trim.x, y - part.trim.y]);
+    let tw = part.trim.w, th = part.trim.h;
+    if (rotate) { poly = poly.map(([x, y]) => [th - y, x]); [tw, th] = [th, tw]; }
+    const rowsPx = th;
+    const cellsH = Math.ceil(th / F);
+    const L = new Array(cellsH).fill(Infinity), R = new Array(cellsH).fill(-Infinity);
+    for (let y = 0; y < rowsPx; y++) {
+      const yc = y + 0.5; let mn = Infinity, mx = -Infinity;
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length];
+        if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) {
+          const x = a[0] + (yc - a[1]) * (b[0] - a[0]) / (b[1] - a[1]);
+          if (x < mn) mn = x; if (x > mx) mx = x;
+        }
+      }
+      if (mn === Infinity) continue;
+      const c = Math.floor(y / F);
+      L[c] = Math.min(L[c], Math.floor(mn / F));
+      R[c] = Math.max(R[c], Math.ceil(mx / F) - 1);
+    }
+    // 패딩 팽창 (볼록 형태라 구간 합집합 = min/max)
+    const p = Math.ceil(padPx / F);
+    const H = cellsH + 2 * p;
+    const L2 = new Int32Array(H), R2 = new Int32Array(H);
+    let W = 0;
+    for (let i = 0; i < H; i++) {
+      let mn = Infinity, mx = -Infinity;
+      for (let k = i - 2 * p; k <= i; k++) {
+        if (k < 0 || k >= cellsH || L[k] === Infinity) continue;
+        mn = Math.min(mn, L[k]); mx = Math.max(mx, R[k]);
+      }
+      if (mn === Infinity) { L2[i] = 1; R2[i] = 0; continue; } // 빈 행
+      L2[i] = mn; R2[i] = mx + 2 * p; if (R2[i] + 1 > W) W = R2[i] + 1;
+    }
+    return { L: L2, R: R2, w: W, h: H, pad: p, rotate };
+  }
+
+  function makePage(G) {
+    return { occ: new Uint8Array(G * G), pre: new Int32Array(G * (G + 1)), usedW: 0, usedH: 0, items: [] };
+  }
+  function rowAny(pg, G, y, a, b) { const o = y * (G + 1); return pg.pre[o + b + 1] - pg.pre[o + a] > 0; }
+  function findFit(pg, G, s, Wmax) {
+    for (let y = 0; y + s.h <= G; y++) {
+      let x = 0;
+      scan: while (x + s.w <= Wmax) {
+        for (let r = 0; r < s.h; r++) {
+          const a = x + s.L[r], b = x + s.R[r];
+          if (b < a) continue;
+          if (rowAny(pg, G, y + r, a, b)) {
+            let k = b; const row = (y + r) * G;
+            while (!pg.occ[row + k]) k--;
+            x = k - s.L[r] + 1; continue scan;
+          }
+        }
+        return [x, y];
+      }
+    }
+    return null;
+  }
+  function place(pg, G, s, x, y) {
+    for (let r = 0; r < s.h; r++) {
+      const a = x + s.L[r], b = x + s.R[r]; if (b < a) continue;
+      const row = (y + r) * G; for (let k = a; k <= b; k++) pg.occ[row + k] = 1;
+      const o = (y + r) * (G + 1); let c = 0; pg.pre[o] = 0;
+      for (let k = 0; k < G; k++) { c += pg.occ[row + k]; pg.pre[o + k + 1] = c; }
+    }
+    pg.usedW = Math.max(pg.usedW, x + s.w); pg.usedH = Math.max(pg.usedH, y + s.h);
+  }
+
+  // 전체 패킹: 여러 폭 후보로 시도해 최소 페이지·최소 면적 채택
+  function pack(parts, opt) {
+    const F = opt.cell, G = Math.floor(opt.maxSize / F);
+    const list = parts.filter(p => !p.empty).map(p => {
+      const s0 = buildShape(p, F, opt.padding, false);
+      const s1 = opt.rotation ? buildShape(p, F, opt.padding, true) : null;
+      return { part: p, shapes: s1 ? [s0, s1] : [s0] };
+    }).sort((a, b) => b.part.hullArea - a.part.hullArea);
+    const tooBig = list.filter(e => e.shapes.every(s => s.w > G || s.h > G)).map(e => e.part.name);
+    const run = list.filter(e => !tooBig.includes(e.part.name));
+    let best = null;
+    const steps = opt.widthSteps || 12;
+    for (let i = 0; i <= steps; i++) {
+      const Wmax = Math.round(G * (0.35 + 0.65 * i / steps));
+      const pages = [makePage(G)];
+      for (const e of run) {
+        let done = false;
+        for (const pg of pages) {
+          let bestFit = null;
+          for (const s of e.shapes) {
+            if (s.w > Wmax) continue;
+            const f = findFit(pg, G, s, Wmax);
+            if (f && (!bestFit || f[1] + s.h < bestFit.y + bestFit.s.h || (f[1] + s.h === bestFit.y + bestFit.s.h && f[0] < bestFit.x)))
+              bestFit = { x: f[0], y: f[1], s };
+          }
+          if (bestFit) { place(pg, G, bestFit.s, bestFit.x, bestFit.y); pg.items.push({ part: e.part, ...bestFit }); done = true; break; }
+        }
+        if (!done) {
+          const pg = makePage(G);
+          const s = e.shapes.find(s => s.w <= Wmax) || e.shapes[0];
+          const f = findFit(pg, G, s, G);
+          place(pg, G, s, f[0], f[1]); pg.items.push({ part: e.part, x: f[0], y: f[1], s }); pages.push(pg);
+        }
+      }
+      const area = pages[0].usedW * pages[0].usedH;
+      const score = pages.length * 1e9 + area;
+      if (!best || score < best.score) best = { score, pages, Wmax };
+    }
+    return {
+      F, G, tooBig,
+      pages: best.pages.map(pg => ({ w: pg.usedW * F, h: pg.usedH * F, items: pg.items })),
+    };
+  }
+  return { analyze, pack };
+})();
+
+/* ===== /ATLAS CORE ===== */
+/* ===== APP ===== */
+(() => {
+  const $ = id => document.getElementById(id);
+  const state = { parts: [], result: null, page: 0, hot: null };
+  const opts = () => ({
+    maxSize: +$('oMax').value, padding: Math.max(0, +$('oPad').value || 0),
+    rotation: $('oRot').value === '1', cell: +$('oCell').value,
+    caution: +$('oC').value, danger: +$('oD').value, k: +$('oK').value || 1,
+  });
+
+  // ---- 입력 ----
+  $('pickDir').onclick = () => $('dirInput').click();
+  $('pickFiles').onclick = () => $('fileInput').click();
+  $('dirInput').onchange = e => load([...e.target.files]);
+  $('fileInput').onchange = e => load([...e.target.files]);
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => e.preventDefault());
+  drop.addEventListener('drop', async e => {
+    const items = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+    const files = [];
+    const walk = async (entry, path) => {
+      if (entry.isFile) {
+        const f = await new Promise((res, rej) => entry.file(res, rej));
+        f._path = path + f.name; files.push(f);
+      } else if (entry.isDirectory) {
+        const rd = entry.createReader();
+        let batch;
+        do { batch = await new Promise((res, rej) => rd.readEntries(res, rej)); for (const c of batch) await walk(c, path + entry.name + '/'); } while (batch.length);
+      }
+    };
+    if (items.length) { for (const it of items) await walk(it, ''); load(files); }
+    else load([...e.dataTransfer.files]);
+  });
+
+  async function load(files) {
+    const pngs = files.filter(f => /\.png$/i.test(f.name));
+    if (!pngs.length) { busy('PNG 파일 없음 · 분절 PNG가 들어 있는 폴더 선택 필요'); return; }
+    const dirs = new Set(pngs.map(f => { const p = f._path || f.webkitRelativePath || f.name; return p.split('/').slice(0, -1).join('/'); }));
+    state.parts = []; state.subdirs = dirs.size > 1 ? dirs.size : 0;
+    const cv = document.createElement('canvas'); const cx = cv.getContext('2d', { willReadFrequently: true });
+    let i = 0;
+    for (const f of pngs) {
+      busy(`이미지 분석 중 ${++i}/${pngs.length}`);
+      try {
+        const bmp = await createImageBitmap(f, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+        cv.width = bmp.width; cv.height = bmp.height; cx.clearRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0);
+        const data = cx.getImageData(0, 0, cv.width, cv.height).data;
+        const a = AtlasCore.analyze(f.name.replace(/\.png$/i, ''), bmp.width, bmp.height, data);
+        a.bmp = bmp;
+        a.noAlpha = !a.empty && a.opaque >= bmp.width * bmp.height * 0.95; // 대부분 불투명 = 캡쳐·배경 이미지
+        a.on = !a.empty && !a.noAlpha;
+        state.parts.push(a);
+      } catch (err) { busy(`${f.name} 읽기 실패 · 손상되었거나 PNG가 아닌 파일`); }
+      if (i % 8 === 0) await tick();
+    }
+    state.parts.sort((a, b) => (b.on - a.on) || (b.hullArea || 0) - (a.hullArea || 0));
+    run();
+  }
+  const tick = () => new Promise(r => setTimeout(r, 0));
+  const busy = t => $('busy').textContent = t;
+
+  // ---- 계산 ----
+  let runId = 0;
+  async function run() {
+    if (!state.parts.length) return;
+    const my = ++runId; const o = opts();
+    busy('배치 계산 중'); await tick(); if (my !== runId) return;
+    const t0 = performance.now();
+    const on = state.parts.filter(p => p.on);
+    state.result = on.length ? AtlasCore.pack(on, o) : { pages: [], tooBig: [] };
+    state.page = 0;
+    busy(`${on.length}개 파츠 계산 완료 · ${Math.round(performance.now() - t0)}ms`);
+    renderVerdict(o); renderList(o); renderTabs(); draw();
+    $('savePng').disabled = !state.result.pages.length;
+  }
+  ['oMax', 'oPad', 'oRot', 'oCell', 'oC', 'oD', 'oK'].forEach(id => $(id).addEventListener('change', run));
+
+  // ---- 판정 ----
+  const fmt = n => n.toLocaleString('ko-KR');
+  function renderVerdict(o) {
+    const on = state.parts.filter(p => p.on);
+    const S = o.maxSize, full = S * S;
+    const hull = on.reduce((s, p) => s + p.hullArea, 0);
+    const dens = hull / full * 100;
+    const r = state.result, pg = r.pages;
+    const reasons = []; let level = 'safe';
+    const up = l => { const rank = { safe: 0, caution: 1, danger: 2 }; if (rank[l] > rank[level]) level = l; };
+
+    if (!on.length) { level = 'none'; reasons.push('포함된 파츠 없음 · 목록에서 파츠 체크 필요'); }
+    if (r.tooBig.length) { up('danger'); reasons.push(`단일 파츠가 ${S} 초과: ${r.tooBig.join(', ')}`); }
+    if (pg.length > 1) { up('danger'); reasons.push(`빈틈 없이 채워도 ${pg.length}장 필요 · Spine에서도 분할 확실`); }
+    if (dens > o.danger) { up('danger'); reasons.push(`면적비 ${dens.toFixed(1)}% · 위험 기준 ${o.danger}% 초과 (검증된 1장 최대치 62.3%)`); }
+    else if (dens > o.caution) { up('caution'); reasons.push(`면적비 ${dens.toFixed(1)}% · 주의 기준 ${o.caution}% 초과`); }
+    let est = null;
+    if (pg.length) {
+      est = { w: Math.round(pg[0].w * o.k), h: Math.round(pg[0].h * o.k) };
+      if (pg.length === 1 && (est.w > S || est.h > S)) {
+        up('caution'); reasons.push(`보정 후 예상 크기가 ${S} 한계에 근접 · 여유 거의 없음`);
+      }
+    }
+    if (state.subdirs) { up('caution'); reasons.push(`하위 폴더 ${state.subdirs}개 감지 · Spine 설정에 따라 폴더별 별도 아틀라스 가능`); }
+    const skipped = state.parts.filter(p => p.noAlpha).length;
+    if (skipped) reasons.push(`투명 영역이 거의 없는 이미지 ${skipped}개 자동 제외 (캡쳐 이미지 추정)`);
+    if (level === 'safe' && on.length) reasons.unshift(`면적비 ${dens.toFixed(1)}% · 1장 수용 예상`);
+
+    const label = { safe: '안전', caution: '주의', danger: '위험', none: '대기 중' }[level];
+    const tail = { safe: '', caution: ' · 애니팀 확인 권장', danger: ' · 파츠 축소나 분리 필요' }[level] || '';
+    $('verdict').dataset.level = level;
+    $('vLevel').textContent = label + tail;
+    $('vReasons').innerHTML = reasons.map(t => `<li>${esc(t)}</li>`).join('');
+
+    $('meter').hidden = !on.length;
+    $('mBar').style.setProperty('--c', o.caution + '%'); $('mBar').style.setProperty('--d', o.danger + '%');
+    $('mPin').style.left = Math.min(100, dens) + '%';
+    $('mC').textContent = o.caution + '%'; $('mD').textContent = o.danger + '%';
+
+    $('stats').hidden = !on.length;
+    $('sCount').textContent = `${on.length} / ${state.parts.length}개`;
+    $('sDensity').textContent = dens.toFixed(1) + '%';
+    $('sSim').textContent = pg.length ? `${pg.length}장 · ${pg.map(p => p.w + '×' + p.h).join(', ')}` : '-';
+    $('sEst').textContent = est ? (pg.length > 1 ? '2장 이상' : (est.w > S || est.h > S) ? `${S} 한계 근접` : `약 ${est.w}×${est.h}`) : '-';
+    const room = full * o.danger / 100 - hull;
+    $('sRoom').textContent = room > 0 ? `${fmt(Math.round(room / 1e4))}만 px² (512² 파츠 ${(room / 262144).toFixed(1)}개)` : '없음';
+    state.est = est; state.dens = dens; state.total = hull;
+  }
+
+  // ---- 파츠 목록 ----
+  function renderList(o) {
+    const ul = $('plist'); $('partsBox').hidden = false;
+    const total = state.total || 1;
+    ul.innerHTML = state.parts.map((p, i) => {
+      if (p.empty) return `<li class="off"><input type="checkbox" disabled aria-label="${esc(p.name)}"><span class="nm">${esc(p.name)}</span><span class="pc">-</span><span class="warn">완전 투명 이미지 · 제외</span></li>`;
+      const share = p.on ? p.hullArea / total * 100 : 0;
+      const fill = Math.round(p.opaque / p.hullArea * 100);
+      const big = p.trim.w > o.maxSize || p.trim.h > o.maxSize;
+      return `<li data-i="${i}" class="${p.on ? '' : 'off'}${state.hot === i ? ' hot' : ''}">
+        <input type="checkbox" data-i="${i}" ${p.on ? 'checked' : ''} aria-label="${esc(p.name)} 포함">
+        <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
+        <span class="pc">${p.on ? share.toFixed(1) + '%' : '제외'}</span>
+        <span class="sub"><span>${p.trim.w}×${p.trim.h}</span><span class="share"><i style="width:${Math.min(100, share * 4)}%"></i></span><span title="외곽선 안에서 실제 그림이 차지하는 비율">채움 ${fill}%</span></span>
+        ${p.noAlpha ? '<span class="warn">투명 영역 거의 없음 · 캡쳐·배경 이미지로 보여 제외 (필요 시 체크)</span>' : ''}
+        ${big ? `<span class="warn">${o.maxSize} 초과 파츠</span>` : ''}
+      </li>`;
+    }).join('');
+  }
+  $('plist').addEventListener('change', e => {
+    const i = e.target.dataset.i; if (i == null) return;
+    state.parts[i].on = e.target.checked; run();
+  });
+  $('plist').addEventListener('mouseover', e => {
+    const li = e.target.closest('li[data-i]'); const i = li ? +li.dataset.i : null;
+    if (i !== state.hot) { state.hot = i; document.querySelectorAll('.plist li').forEach(x => x.classList.toggle('hot', +x.dataset.i === i && x.dataset.i != null)); focusPageOf(i); draw(); }
+  });
+  $('plist').addEventListener('mouseleave', () => { state.hot = null; document.querySelectorAll('.plist li.hot').forEach(x => x.classList.remove('hot')); draw(); });
+  $('allOn').onclick = () => { state.parts.forEach(p => { if (!p.empty) p.on = true; }); run(); };
+  function focusPageOf(i) {
+    if (i == null || !state.result) return;
+    const p = state.parts[i];
+    const idx = state.result.pages.findIndex(pg => pg.items.some(it => it.part === p));
+    if (idx >= 0 && idx !== state.page) { state.page = idx; renderTabs(); }
+  }
+
+  // ---- 페이지 탭 ----
+  function renderTabs() {
+    const pg = state.result ? state.result.pages : [];
+    $('tabs').innerHTML = pg.length > 1 ? pg.map((p, i) => `<button class="tab" role="tab" aria-selected="${i === state.page}" data-p="${i}">${i + 1}장</button>`).join('') : '';
+    $('viewTitle').textContent = pg.length > 1 ? `배치 미리보기 · ${pg.length}장 중 ${state.page + 1}장` : '배치 미리보기';
+  }
+  $('tabs').addEventListener('click', e => { const p = e.target.dataset.p; if (p != null) { state.page = +p; renderTabs(); draw(); } });
+  $('tHull').onchange = draw; $('tImg').onchange = draw;
+
+  // ---- 그리기 ----
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  function draw() {
+    const o = opts(), S = o.maxSize;
+    const cssW = Math.min(900, cv.parentElement.clientWidth - 28);
+    const dpr = window.devicePixelRatio || 1;
+    const M = 34; // 눈금자 여백
+    const sc = (cssW - M) / S;
+    cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssW * dpr);
+    cv.style.width = cssW + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssW);
+    // 눈금자
+    ctx.font = '11px "IBM Plex Sans KR", sans-serif'; ctx.fillStyle = '#CFE3DC';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let v = 0; v <= S; v += S / 4) {
+      const edge = v === S ? 'right' : v === 0 ? 'left' : 'center';
+      ctx.textAlign = edge; ctx.fillText(v, M + v * sc, 12);
+      ctx.save(); ctx.translate(12, M + v * sc); ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = v === S ? 'left' : v === 0 ? 'right' : 'center'; ctx.fillText(v, 0, 0); ctx.restore();
+    }
+    ctx.save(); ctx.translate(M, M);
+    // 커팅매트 격자
+    const step = S / 32;
+    for (let v = 0; v <= S; v += step) {
+      const strong = Math.round(v / step) % 8 === 0;
+      ctx.strokeStyle = strong ? '#4A8374' : '#2E6356'; ctx.lineWidth = strong ? 1 : .5;
+      ctx.beginPath(); ctx.moveTo(v * sc, 0); ctx.lineTo(v * sc, S * sc); ctx.moveTo(0, v * sc); ctx.lineTo(S * sc, v * sc); ctx.stroke();
+    }
+    ctx.setLineDash([8, 5]); ctx.strokeStyle = '#E8C547'; ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, S * sc, S * sc); ctx.setLineDash([]);
+
+    const r = state.result;
+    if (!r || !r.pages.length) {
+      ctx.fillStyle = '#CFE3DC'; ctx.font = '15px "IBM Plex Sans KR", sans-serif';
+      ctx.fillText(state.parts.length ? '포함된 파츠 없음' : '분절 PNG 폴더를 넣으면 배치 결과 표시', S * sc / 2, S * sc / 2);
+      ctx.restore(); return;
+    }
+    const pg = r.pages[Math.min(state.page, r.pages.length - 1)], F = r.F;
+    // 사용 영역, Spine 예상 영역
+    ctx.strokeStyle = '#9FD4C3'; ctx.lineWidth = 1.5; ctx.strokeRect(0, 0, pg.w * sc, pg.h * sc);
+    if (r.pages.length === 1 && state.est) {
+      ctx.setLineDash([2, 4]); ctx.strokeStyle = '#F29E8E'; ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, Math.min(S, state.est.w) * sc, Math.min(S, state.est.h) * sc); ctx.setLineDash([]);
+    }
+    const hotPart = state.hot != null ? state.parts[state.hot] : null;
+    for (const it of pg.items) {
+      const p = it.part, s = it.s;
+      const ox = (it.x + s.pad) * F, oy = (it.y + s.pad) * F;
+      ctx.save(); ctx.scale(sc, sc);
+      if (s.rotate) { ctx.translate(ox + p.trim.h, oy); ctx.rotate(Math.PI / 2); } else ctx.translate(ox, oy);
+      if ($('tImg').checked) {
+        ctx.globalAlpha = hotPart && hotPart !== p ? .35 : 1;
+        ctx.drawImage(p.bmp, p.trim.x, p.trim.y, p.trim.w, p.trim.h, 0, 0, p.trim.w, p.trim.h);
+        ctx.globalAlpha = 1;
+      }
+      if ($('tHull').checked || hotPart === p) {
+        ctx.beginPath();
+        p.hull.forEach(([x, y], k) => { k ? ctx.lineTo(x - p.trim.x, y - p.trim.y) : ctx.moveTo(x - p.trim.x, y - p.trim.y); });
+        ctx.closePath();
+        if (hotPart === p) { ctx.fillStyle = 'rgba(232,197,71,.25)'; ctx.fill(); }
+        ctx.strokeStyle = hotPart === p ? '#E8C547' : 'rgba(207,227,220,.7)'; ctx.lineWidth = (hotPart === p ? 3 : 1.2) / sc; ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  window.addEventListener('resize', () => { clearTimeout(draw._t); draw._t = setTimeout(draw, 120); });
+
+  $('savePng').onclick = () => {
+    cv.toBlob(b => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+      a.download = `atlas_preview_${state.page + 1}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+  };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  if (document.fonts) document.fonts.ready.then(draw); draw();
+})();
+</script>
+</body>
+</html>
