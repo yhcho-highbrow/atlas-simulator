@@ -107,13 +107,19 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
 .legend .l1::before{border-color:var(--ruler);border-top-style:dashed}
 .legend .l2::before{border-color:#9FD4C3}
 .legend .l3::before{border-color:#F29E8E;border-top-style:dotted}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:5px 12px;cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--mat);color:#fff}
+body[data-mode="atlas"] .matOnly{display:none}
+body[data-mode="atlas"] .stage{background:var(--panel);border:1px solid var(--line)}
+.caption{font-size:13px;color:var(--ink-soft);margin:8px 0 0}
 .empty{color:#CFE3DC;text-align:center;padding:80px 20px;font-size:15px}
 .busy{font-size:13px;color:var(--ink-soft)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
-<body>
+<body data-mode="atlas">
 <header>
   <h1>분절 아틀라스 미리보기</h1>
   <p>분절 PNG가 Spine 아틀라스 2048 한 장에 들어갈지 미리 확인</p>
@@ -162,10 +168,11 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
     <div class="field"><label for="oC">주의 기준(면적비 %)</label><input id="oC" type="number" min="10" max="100" value="50"></div>
     <div class="field"><label for="oD">위험 기준(면적비 %)</label><input id="oD" type="number" min="10" max="100" value="65"></div>
     <div class="field"><label for="oK">Spine 크기 보정 배율</label><input id="oK" type="number" min="1" max="2" step="0.01" value="1.16">
-      <span class="hint">시뮬 결과 가로·세로에 곱하는 값</span></div>
+      <span class="hint">시뮬 결과 높이에 곱하는 값 (가로는 최대 크기까지)</span></div>
     <p class="note">판정 방식</p>
     <ul class="note" style="padding-left:18px;margin-top:2px">
       <li>파츠 투명 영역 제외, 외곽을 감싸는 볼록 도형 기준 배치 (Spine Polygons 패킹 근사)</li>
+      <li>가로 폭을 먼저 채우고, 넘치면 큰 파츠부터 다음 장으로 이동 (Spine 결과 경향 반영)</li>
       <li>실제 Spine 배치와 좌표는 다름 · 페이지 수와 여유 판단 용도</li>
       <li>기준값은 1장 성공 3건, 2장 초과 1건으로 설정 · 사례 추가 시 재보정</li>
     </ul>
@@ -173,12 +180,12 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
       <thead><tr><th>검증 샘플</th><th>면적비</th><th>시뮬</th><th>Spine</th></tr></thead>
       <tbody>
         <tr><td>말덱</td><td>62.3%</td><td>2048×1792</td><td>2033×1966</td></tr>
-        <tr><td>일루이드</td><td>40.6%</td><td>1384×1756</td><td>1860×1673</td></tr>
-        <tr><td>데바</td><td>26.6%</td><td>1604×956</td><td>1937×911</td></tr>
-        <tr><td>마누스</td><td>78.4%</td><td>2장</td><td>2장 (2037×1422, 2039×1219)</td></tr>
+        <tr><td>일루이드</td><td>40.6%</td><td>2048×1224</td><td>1860×1673</td></tr>
+        <tr><td>데바</td><td>26.6%</td><td>2048×788</td><td>1937×911</td></tr>
+        <tr><td>마누스</td><td>78.4%</td><td>2장 (64+1개)</td><td>2장 (63+2개)</td></tr>
       </tbody>
     </table>
-    <p class="note">1장 성공 3건 · Spine 면적이 시뮬보다 9~34% 큼<br>마누스 · 시뮬·Spine 모두 2장, 대형 배경 2개가 2장째로 분리</p>
+    <p class="note">1장 성공 3건 · Spine 높이가 시뮬보다 10~37% 큼<br>마누스 · 시뮬·Spine 모두 2장, 큰 배경 파츠가 2장째로 분리</p>
   </details>
 
   <section class="parts" id="partsBox" hidden>
@@ -193,13 +200,18 @@ canvas{display:block;width:100%;height:auto;max-width:900px;margin:0 auto}
     <h2 id="viewTitle">배치 미리보기</h2>
     <div class="tabs" role="tablist" id="tabs"></div>
     <div class="toggles">
-      <label><input type="checkbox" id="tHull" checked> 외곽선</label>
-      <label><input type="checkbox" id="tImg" checked> 이미지</label>
-      <button class="btn" id="savePng" type="button" disabled>미리보기 PNG 저장</button>
+      <div class="seg" role="radiogroup" aria-label="보기 방식">
+        <button type="button" role="radio" aria-checked="true" data-mode="atlas">아틀라스 보기</button>
+        <button type="button" role="radio" aria-checked="false" data-mode="mat">분석 보기</button>
+      </div>
+      <label class="matOnly"><input type="checkbox" id="tHull" checked> 외곽선</label>
+      <label class="matOnly"><input type="checkbox" id="tImg" checked> 이미지</label>
+      <button class="btn" id="savePng" type="button" disabled>페이지 PNG 저장</button>
     </div>
   </div>
   <div class="stage"><canvas id="cv" width="900" height="900" aria-label="아틀라스 배치 미리보기"></canvas></div>
-  <div class="legend"><span class="l1">페이지 최대 크기</span><span class="l2">시뮬레이션 사용 영역</span><span class="l3">Spine 예상 크기</span></div>
+  <p class="caption" id="caption"></p>
+  <div class="legend matOnly"><span class="l1">페이지 최대 크기</span><span class="l2">시뮬레이션 사용 영역</span><span class="l3">Spine 예상 크기</span></div>
 </main>
 </div>
 <script>
@@ -309,7 +321,29 @@ const AtlasCore = (() => {
     pg.usedW = Math.max(pg.usedW, x + s.w); pg.usedH = Math.max(pg.usedH, y + s.h);
   }
 
-  // 전체 패킹: 여러 폭 후보로 시도해 최소 페이지·최소 면적 채택
+  // 한 장에 전부 배치 시도 (폭 후보별), 실패 시 null
+  function packOne(run, G, widths, score) {
+    let best = null;
+    for (const Wmax of widths) {
+      const pg = makePage(G); let ok = true;
+      for (const e of run) {
+        let bf = null;
+        for (const s of e.shapes) {
+          if (s.w > Wmax) continue;
+          const f = findFit(pg, G, s, Wmax);
+          if (f && (!bf || f[1] + s.h < bf.y + bf.s.h || (f[1] + s.h === bf.y + bf.s.h && f[0] < bf.x))) bf = { x: f[0], y: f[1], s };
+        }
+        if (!bf) { ok = false; break; }
+        place(pg, G, bf.s, bf.x, bf.y); pg.items.push({ part: e.part, ...bf });
+      }
+      if (!ok) continue;
+      const sc = score(pg);
+      if (!best || sc < best.sc) best = { sc, pg };
+    }
+    return best && best.pg;
+  }
+
+  // 전체 패킹: 넘치면 큰 파츠부터 다음 장으로 넘겨 1장째 파츠 수 최대화 (Spine 분할 방식 근사)
   function pack(parts, opt) {
     const F = opt.cell, G = Math.floor(opt.maxSize / F);
     const list = parts.filter(p => !p.empty).map(p => {
@@ -318,43 +352,20 @@ const AtlasCore = (() => {
       return { part: p, shapes: s1 ? [s0, s1] : [s0] };
     }).sort((a, b) => b.part.hullArea - a.part.hullArea);
     const tooBig = list.filter(e => e.shapes.every(s => s.w > G || s.h > G)).map(e => e.part.name);
-    const run = list.filter(e => !tooBig.includes(e.part.name));
-    let best = null;
-    const steps = opt.widthSteps || 12;
-    for (let i = 0; i <= steps; i++) {
-      const Wmax = Math.round(G * (0.35 + 0.65 * i / steps));
-      const pages = [makePage(G)];
-      for (const e of run) {
-        let done = false;
-        for (const pg of pages) {
-          let bestFit = null;
-          for (const s of e.shapes) {
-            if (s.w > Wmax) continue;
-            const f = findFit(pg, G, s, Wmax);
-            if (f && (!bestFit || f[1] + s.h < bestFit.y + bestFit.s.h || (f[1] + s.h === bestFit.y + bestFit.s.h && f[0] < bestFit.x)))
-              bestFit = { x: f[0], y: f[1], s };
-          }
-          if (bestFit) { place(pg, G, bestFit.s, bestFit.x, bestFit.y); pg.items.push({ part: e.part, ...bestFit }); done = true; break; }
-        }
-        if (!done) {
-          const pg = makePage(G);
-          const s = e.shapes.find(s => s.w <= Wmax) || e.shapes[0];
-          const f = findFit(pg, G, s, G);
-          place(pg, G, s, f[0], f[1]); pg.items.push({ part: e.part, x: f[0], y: f[1], s }); pages.push(pg);
-        }
-      }
-      const area = pages[0].usedW * pages[0].usedH;
-      const score = pages.length * 1e9 + area;
-      if (!best || score < best.score) best = { score, pages, Wmax };
+    let remaining = list.filter(e => !tooBig.includes(e.part.name));
+    const widths = (opt.widths || [1, .95, .9, .85, .8, .75, .7, .6, .5]).map(k => Math.round(G * k));
+    const score = opt.score === 'area' ? pg => pg.usedW * pg.usedH : pg => pg.usedH * 1e6 + pg.usedW; // 기본: 가로로 넓게 펼침
+    const pages = [];
+    while (remaining.length) {
+      let cur = remaining.slice(), over = [], pg = null;
+      while (cur.length && !(pg = packOne(cur, G, widths, score))) over.push(cur.shift());
+      if (!pg) break;
+      pages.push(pg); remaining = over;
     }
-    return {
-      F, G, tooBig,
-      pages: best.pages.map(pg => ({ w: pg.usedW * F, h: pg.usedH * F, items: pg.items })),
-    };
+    return { F, G, tooBig, pages: pages.map(pg => ({ w: pg.usedW * F, h: pg.usedH * F, items: pg.items })) };
   }
   return { analyze, pack };
 })();
-
 /* ===== /ATLAS CORE ===== */
 /* ===== APP ===== */
 (() => {
@@ -454,8 +465,8 @@ const AtlasCore = (() => {
     else if (dens > o.caution) { up('caution'); reasons.push(`면적비 ${dens.toFixed(1)}% · 주의 기준 ${o.caution}% 초과`); }
     let est = null;
     if (pg.length) {
-      est = { w: Math.round(pg[0].w * o.k), h: Math.round(pg[0].h * o.k) };
-      if (pg.length === 1 && (est.w > S || est.h > S)) {
+      est = { w: Math.min(S, Math.round(pg[0].w * o.k)), h: Math.round(pg[0].h * o.k) };
+      if (pg.length === 1 && est.h > S) {
         up('caution'); reasons.push(`보정 후 예상 크기가 ${S} 한계에 근접 · 여유 거의 없음`);
       }
     }
@@ -536,27 +547,66 @@ const AtlasCore = (() => {
 
   // ---- 그리기 ----
   const cv = $('cv'), ctx = cv.getContext('2d');
+  let mode = 'atlas';
+  document.querySelectorAll('.seg button').forEach(bt => bt.onclick = () => {
+    mode = bt.dataset.mode; document.body.dataset.mode = mode;
+    document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-checked', x === bt));
+    draw();
+  });
+  const curPage = () => { const r = state.result; return r && r.pages.length ? r.pages[Math.min(state.page, r.pages.length - 1)] : null; };
+
+  // 파츠 그리기 (공용): c=컨텍스트, sc=배율
+  function drawParts(c, pg, F, sc, { dim, hull }) {
+    const hotPart = state.hot != null ? state.parts[state.hot] : null;
+    for (const it of pg.items) {
+      const p = it.part, s = it.s;
+      const ox = (it.x + s.pad) * F, oy = (it.y + s.pad) * F;
+      c.save(); c.scale(sc, sc);
+      if (s.rotate) { c.translate(ox + p.trim.h, oy); c.rotate(Math.PI / 2); } else c.translate(ox, oy);
+      if (dim !== false) c.globalAlpha = hotPart && hotPart !== p ? .3 : 1;
+      if (!hull || $('tImg').checked) c.drawImage(p.bmp, p.trim.x, p.trim.y, p.trim.w, p.trim.h, 0, 0, p.trim.w, p.trim.h);
+      c.globalAlpha = 1;
+      if ((hull && $('tHull').checked) || (dim !== false && hotPart === p)) {
+        c.beginPath();
+        p.hull.forEach(([x, y], k) => { k ? c.lineTo(x - p.trim.x, y - p.trim.y) : c.moveTo(x - p.trim.x, y - p.trim.y); });
+        c.closePath();
+        if (hotPart === p) { c.fillStyle = 'rgba(232,197,71,.22)'; c.fill(); }
+        c.strokeStyle = hotPart === p ? '#E8B92F' : 'rgba(207,227,220,.7)'; c.lineWidth = (hotPart === p ? 3 : 1.2) / sc; c.stroke();
+      }
+      c.restore();
+    }
+  }
+
   function draw() {
-    const o = opts(), S = o.maxSize;
-    const cssW = Math.min(900, cv.parentElement.clientWidth - 28);
+    const o = opts(), S = o.maxSize, r = state.result, pg = curPage();
+    const cssW = Math.min(1100, cv.parentElement.clientWidth - 30);
     const dpr = window.devicePixelRatio || 1;
-    const M = 34; // 눈금자 여백
-    const sc = (cssW - M) / S;
+    cv.style.maxWidth = '1100px';
+    if (mode === 'atlas' && pg) {
+      const sc = cssW / S, cssH = Math.max(40, Math.round(pg.h * sc));
+      cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+      cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, pg.w * sc, cssH);
+      drawParts(ctx, pg, r.F, sc, { hull: false });
+      $('caption').textContent = `${r.pages.length > 1 ? `${state.page + 1}장 / ${r.pages.length}장 · ` : ''}시뮬레이션 ${pg.w}×${pg.h} · 파츠 ${pg.items.length}개 · 실제 Spine 배치와 위치는 다를 수 있음`;
+      return;
+    }
+    $('caption').textContent = '';
+    const M = 34, sc = (cssW - M) / S;
     cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssW * dpr);
-    cv.style.width = cssW + 'px';
+    cv.style.width = cssW + 'px'; cv.style.height = cssW + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssW);
-    // 눈금자
-    ctx.font = '11px "IBM Plex Sans KR", sans-serif'; ctx.fillStyle = '#CFE3DC';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const onMat = mode === 'mat';
+    if (!onMat) { ctx.fillStyle = '#1F4D43'; ctx.fillRect(0, 0, cssW, cssW); }
+    ctx.font = '11px "IBM Plex Sans KR", sans-serif'; ctx.fillStyle = '#CFE3DC'; ctx.textBaseline = 'middle';
     for (let v = 0; v <= S; v += S / 4) {
-      const edge = v === S ? 'right' : v === 0 ? 'left' : 'center';
-      ctx.textAlign = edge; ctx.fillText(v, M + v * sc, 12);
+      ctx.textAlign = v === S ? 'right' : v === 0 ? 'left' : 'center'; ctx.fillText(v, M + v * sc, 12);
       ctx.save(); ctx.translate(12, M + v * sc); ctx.rotate(-Math.PI / 2);
       ctx.textAlign = v === S ? 'left' : v === 0 ? 'right' : 'center'; ctx.fillText(v, 0, 0); ctx.restore();
     }
     ctx.save(); ctx.translate(M, M);
-    // 커팅매트 격자
     const step = S / 32;
     for (let v = 0; v <= S; v += step) {
       const strong = Math.round(v / step) % 8 === 0;
@@ -565,48 +615,32 @@ const AtlasCore = (() => {
     }
     ctx.setLineDash([8, 5]); ctx.strokeStyle = '#E8C547'; ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, S * sc, S * sc); ctx.setLineDash([]);
-
-    const r = state.result;
-    if (!r || !r.pages.length) {
-      ctx.fillStyle = '#CFE3DC'; ctx.font = '15px "IBM Plex Sans KR", sans-serif';
+    if (!pg) {
+      ctx.fillStyle = '#CFE3DC'; ctx.font = '15px "IBM Plex Sans KR", sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(state.parts.length ? '포함된 파츠 없음' : '분절 PNG 폴더를 넣으면 배치 결과 표시', S * sc / 2, S * sc / 2);
       ctx.restore(); return;
     }
-    const pg = r.pages[Math.min(state.page, r.pages.length - 1)], F = r.F;
-    // 사용 영역, Spine 예상 영역
     ctx.strokeStyle = '#9FD4C3'; ctx.lineWidth = 1.5; ctx.strokeRect(0, 0, pg.w * sc, pg.h * sc);
     if (r.pages.length === 1 && state.est) {
       ctx.setLineDash([2, 4]); ctx.strokeStyle = '#F29E8E'; ctx.lineWidth = 2;
       ctx.strokeRect(0, 0, Math.min(S, state.est.w) * sc, Math.min(S, state.est.h) * sc); ctx.setLineDash([]);
     }
-    const hotPart = state.hot != null ? state.parts[state.hot] : null;
-    for (const it of pg.items) {
-      const p = it.part, s = it.s;
-      const ox = (it.x + s.pad) * F, oy = (it.y + s.pad) * F;
-      ctx.save(); ctx.scale(sc, sc);
-      if (s.rotate) { ctx.translate(ox + p.trim.h, oy); ctx.rotate(Math.PI / 2); } else ctx.translate(ox, oy);
-      if ($('tImg').checked) {
-        ctx.globalAlpha = hotPart && hotPart !== p ? .35 : 1;
-        ctx.drawImage(p.bmp, p.trim.x, p.trim.y, p.trim.w, p.trim.h, 0, 0, p.trim.w, p.trim.h);
-        ctx.globalAlpha = 1;
-      }
-      if ($('tHull').checked || hotPart === p) {
-        ctx.beginPath();
-        p.hull.forEach(([x, y], k) => { k ? ctx.lineTo(x - p.trim.x, y - p.trim.y) : ctx.moveTo(x - p.trim.x, y - p.trim.y); });
-        ctx.closePath();
-        if (hotPart === p) { ctx.fillStyle = 'rgba(232,197,71,.25)'; ctx.fill(); }
-        ctx.strokeStyle = hotPart === p ? '#E8C547' : 'rgba(207,227,220,.7)'; ctx.lineWidth = (hotPart === p ? 3 : 1.2) / sc; ctx.stroke();
-      }
-      ctx.restore();
-    }
+    drawParts(ctx, pg, r.F, sc, { hull: true });
     ctx.restore();
   }
   window.addEventListener('resize', () => { clearTimeout(draw._t); draw._t = setTimeout(draw, 120); });
 
   $('savePng').onclick = () => {
-    cv.toBlob(b => {
+    const pg = curPage(); if (!pg) return;
+    let out = cv;
+    if (mode === 'atlas') {
+      out = document.createElement('canvas'); out.width = pg.w; out.height = pg.h;
+      drawParts(out.getContext('2d'), pg, state.result.F, 1, { hull: false, dim: false });
+    }
+    out.toBlob(b => {
       const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-      a.download = `atlas_preview_${state.page + 1}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      a.download = mode === 'atlas' ? `atlas_sim_page${state.page + 1}_${pg.w}x${pg.h}.png` : `atlas_analysis_page${state.page + 1}.png`;
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
   };
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
